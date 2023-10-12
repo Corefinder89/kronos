@@ -1,8 +1,16 @@
 #!/bin/bash
 
-echo "Setting up droplets"
+while getopts n:s: flag
+do
+	case "${flag}" in
+		n) nodes=${OPTARG};;
+		s) swarmnode=${OPTARG};;
+	esac
+done
 
-for i in {1..5}; do
+echo "Setting up $nodes droplets===============================================>"
+
+for i in `seq $nodes`; do
 	docker-machine create \
 	   --driver digitalocean \
      --digitalocean-image "ubuntu-20-04-x64" \
@@ -11,21 +19,27 @@ for i in {1..5}; do
     node-$i;
 done
 
+echo "Initialize $swarmnode as swarm node======================================>"
 
-echo "Initialize swarm node"
+docker-machine ssh $swarmnode -- docker swarm init --advertise-addr $(docker-machine ip $swarmnode)
+docker-machine ssh $swarmnode -- docker node update --availability drain node-1
 
-docker-machine ssh node-1 -- docker swarm init --advertise-addr $(docker-machine ip node-1)
+echo "Adding nodes to the swarm node $swarmnode================================>"
 
-docker-machine ssh node-1 -- docker node update --availability drain node-1
+TOKEN=`docker-machine ssh $swarmnode docker swarm join-token worker | grep token | awk '{ print $5 }'`
 
-echo "Adding nodes to the swarm"
+metadata=$(curl -X GET "https://api.digitalocean.com/v2/droplets" \
+	-H "Authorization: Bearer $DO_API_ACCESS_TOKEN")
 
-TOKEN=`docker-machine ssh node-1 docker swarm join-token worker | grep token | awk '{ print $5 }'`
+dropletnames=$(echo "$metadata" | jq -r '.droplets[].name')
 
-docker-machine ssh node-2 "docker swarm join --token ${TOKEN} $(docker-machine ip node-1):2377"
-docker-machine ssh node-3 "docker swarm join --token ${TOKEN} $(docker-machine ip node-1):2377"
-docker-machine ssh node-4 "docker swarm join --token ${TOKEN} $(docker-machine ip node-1):2377"
-docker-machine ssh node-5 "docker swarm join --token ${TOKEN} $(docker-machine ip node-1):2377"
+for droplet in $dropletnames; do
+	if [ $droplet == $swarmnode ]; then
+		echo "Skipping $swarmnode==================================================>"
+	else
+		docker-machine ssh $droplet "docker swarm join --token ${TOKEN} $(docker-machine ip ${swarmnode}):2377"
+	fi
+done
 
 # echo "Deploying Selenium Grid to http://$(docker-machine ip node-1):4444..."
 
