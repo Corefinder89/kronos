@@ -41,7 +41,7 @@ for droplet in $dropletnames; do
 	fi
 done
 
-echo "Deploying Selenium Grid to http://$(docker-machine ip $swarmnode):4444..."
+echo "Deploying Selenium Grid to http://$(docker-machine ip $swarmnode):4444/grid/console"
 
 eval $(docker-machine env $swarmnode)
 docker stack deploy --compose-file="../distributed-test-setup/docker-compose.yml" selenium
