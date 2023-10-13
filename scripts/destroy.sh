@@ -16,18 +16,11 @@ for droplet in $dropletids; do
 done
 
 # Delete local configurations
-metadata_names=$(curl -X GET "https://api.digitalocean.com/v2/droplets" \
-	-H "Authorization: Bearer $DO_API_ACCESS_TOKEN")
-
-dropletnames=$(echo "$metadata" | jq -r '.droplets[].name')
-
-for droplet in $dropletnames; do
-	docker-machine rm -f droplet
-  echo deleting $droplet
-done
+dropletnames=$(docker-machine ls | awk 'NR > 1 {print $1}')
+docker-machine rm -f $dropletnames
 
 if [ $? -eq 0 ]; then
-    echo "All droplets destroyed"
+    echo "All droplets destroyed from remote and the local"
 else
     echo "Exit status failure"
 fi

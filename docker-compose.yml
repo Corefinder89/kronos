@@ -3,7 +3,7 @@ version: '3.8'
 services:
 
   hub:
-    image: selenium/hub:3.141.59-20210311
+    image: selenium/hub:4.13.0
     ports:
       - 4444:4444
     deploy:
@@ -14,7 +14,7 @@ services:
           - node.role == worker
 
   chrome:
-    image: selenium/node-chrome:3.141.59-20200409
+    image: selenium/node-chrome:117.0
     volumes:
       - /dev/urandom:/dev/random
     depends_on:
@@ -33,7 +33,7 @@ services:
           - node.role == worker
 
   firefox:
-    image: selenium/node-firefox:3.141.59-zirconium
+    image: selenium/node-firefox:118.0
     volumes:
       - /dev/urandom:/dev/random
     depends_on:
