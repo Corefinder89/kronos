@@ -43,6 +43,6 @@ done
 
 echo "Deploying Selenium Grid to http://$(docker-machine ip $swarmnode):4444..."
 
-eval $(docker-machine env node-1)
-docker stack deploy --compose-file=../docker-compose.yml selenium
+eval $(docker-machine env $swarmnode)
+docker stack deploy --compose-file="../distributed-test-setup/docker-compose.yml" selenium
 docker service scale selenium_chrome=2 selenium_firefox=2
