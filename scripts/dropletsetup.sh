@@ -12,8 +12,10 @@ echo "Setting up $nodes droplets===============================================>
 
 for i in `seq $nodes`; do
 	docker-machine create \
-	   --driver digitalocean \
+	 --driver digitalocean \
      --digitalocean-image "ubuntu-20-04-x64" \
+	 --digitalocean-region "nyc1" \
+	 --digitalocean-size "s-4vcpu-8gb" \
      --digitalocean-access-token $DO_API_ACCESS_TOKEN \
      --engine-install-url "https://releases.rancher.com/install-docker/19.03.9.sh" \
     node-$i;
