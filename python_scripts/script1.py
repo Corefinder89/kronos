@@ -13,16 +13,15 @@ class HackerNewsSearchTest(unittest.TestCase):
 
     def setUp(self):
         try:
+            address = os.getenv('NODE_HUB_ADDRESS')
             chrome_options = Options()
-            # chrome_options.add_argument("--headless")
             chrome_options.add_argument("--no-sandbox")
             chrome_options.add_argument('--disable-dev-shm-usage')
-            caps = {'browserName': os.getenv('BROWSER', 'chrome')}
-            address = os.getenv('NODE_HUB_ADDRESS')
+            chrome_caps = {'browserName': os.getenv('BROWSER', 'chrome')}
             self.browser = webdriver.Remote(
                 command_executor=f'http://{address}:4444/wd/hub',
                 options=chrome_options,
-                desired_capabilities=caps
+                desired_capabilities=chrome_caps
             )
         except WebDriverException as e:
             traceback.print_exc()
