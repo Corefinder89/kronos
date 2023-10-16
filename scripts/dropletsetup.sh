@@ -1,34 +1,50 @@
 #!/bin/bash
 
-echo "Setting up droplets"
+while getopts n:s: flag
+do
+	case "${flag}" in
+		n) nodes=${OPTARG};;
+		s) swarmnode=${OPTARG};;
+	esac
+done
 
-for i in {1..5}; do
+echo "Setting up $nodes droplets===============================================>"
+
+for i in `seq $nodes`; do
 	docker-machine create \
-	   --driver digitalocean \
+	 --driver digitalocean \
      --digitalocean-image "ubuntu-20-04-x64" \
+	 --digitalocean-region "nyc1" \
+	 --digitalocean-size "s-4vcpu-8gb" \
      --digitalocean-access-token $DO_API_ACCESS_TOKEN \
      --engine-install-url "https://releases.rancher.com/install-docker/19.03.9.sh" \
     node-$i;
 done
 
+echo "Initialize $swarmnode as swarm node======================================>"
 
-echo "Initialize swarm node"
+docker-machine ssh $swarmnode -- docker swarm init --advertise-addr $(docker-machine ip $swarmnode)
+docker-machine ssh $swarmnode -- docker node update --availability drain node-1
 
-docker-machine ssh node-1 -- docker swarm init --advertise-addr $(docker-machine ip node-1)
+echo "Adding nodes to the swarm node $swarmnode================================>"
 
-docker-machine ssh node-1 -- docker node update --availability drain node-1
+TOKEN=`docker-machine ssh $swarmnode docker swarm join-token worker | grep token | awk '{ print $5 }'`
 
-echo "Adding nodes to the swarm"
+metadata=$(curl -X GET "https://api.digitalocean.com/v2/droplets" \
+	-H "Authorization: Bearer $DO_API_ACCESS_TOKEN")
 
-TOKEN=`docker-machine ssh node-1 docker swarm join-token worker | grep token | awk '{ print $5 }'`
+dropletnames=$(echo "$metadata" | jq -r '.droplets[].name')
 
-docker-machine ssh node-2 "docker swarm join --token ${TOKEN} $(docker-machine ip node-1):2377"
-docker-machine ssh node-3 "docker swarm join --token ${TOKEN} $(docker-machine ip node-1):2377"
-docker-machine ssh node-4 "docker swarm join --token ${TOKEN} $(docker-machine ip node-1):2377"
-docker-machine ssh node-5 "docker swarm join --token ${TOKEN} $(docker-machine ip node-1):2377"
+for droplet in $dropletnames; do
+	if [ $droplet == $swarmnode ]; then
+		echo "Skipping $swarmnode==================================================>"
+	else
+		docker-machine ssh $droplet "docker swarm join --token ${TOKEN} $(docker-machine ip ${swarmnode}):2377"
+	fi
+done
 
-# echo "Deploying Selenium Grid to http://$(docker-machine ip node-1):4444..."
+echo "Deploying Selenium Grid to http://$(docker-machine ip $swarmnode):4444/grid/console"
 
-# eval $(docker-machine env node-1)
-# docker stack deploy --compose-file=docker-compose.yml selenium
-# docker service scale selenium_chrome=2 selenium_firefox=2
+eval $(docker-machine env $swarmnode)
+docker stack deploy --compose-file="../distributed-test-setup/docker-compose.yml" selenium
+docker service scale selenium_chrome=2 selenium_firefox=2
