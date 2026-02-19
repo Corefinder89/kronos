@@ -73,7 +73,7 @@ doctl compute ssh-key list
 
 | Tool | Purpose |
 |---|---|
-| `docker` | Stack deployment via `docker context` |
+| `docker` | Stack deployment via `docker context` and context management |
 | `jq` | JSON parsing (used internally by scripts) |
 | `ssh` | Remote Swarm commands |
 
@@ -92,12 +92,13 @@ bash scripts/dropletsetup.sh \
 
 What this does, in order:
 
-1. Creates `node-1`, `node-2`, … `node-N` droplets on DigitalOcean (Ubuntu 22.04, 4 vCPU / 8 GB)
-2. Waits for Docker to be ready on each node (installed via cloud-init)
-3. Initialises Docker Swarm on the manager node and drains it from workloads
-4. Joins all other nodes as Swarm workers
-5. Creates a local `docker context` named `kronos-swarm` pointing at the manager
-6. Deploys the Selenium Grid stack and scales Chrome + Firefox to 2 replicas each
+1. **Cleans up existing contexts** — Automatically removes any existing `docker-swarm` context to prevent conflicts
+2. Creates `node-1`, `node-2`, … `node-N` droplets on DigitalOcean (Ubuntu 22.04, 4 vCPU / 8 GB)
+3. Waits for Docker to be ready on each node (installed via cloud-init)
+4. Initialises Docker Swarm on the manager node and drains it from workloads
+5. Joins all other nodes as Swarm workers
+6. Creates a local `docker context` named `kronos-swarm` pointing at the manager
+7. Deploys the Selenium Grid stack and scales Chrome + Firefox to 2 replicas each
 
 On completion:
 
@@ -128,7 +129,7 @@ bash scripts/destroy.sh
 
 This will:
 1. Remove the `selenium` stack from the Swarm
-2. Delete the local `kronos-swarm` Docker context
+2. **Force remove Docker contexts** — Deletes both `kronos-swarm` and `docker-swarm` contexts (using force flag to handle contexts in use)
 3. Delete all `node-*` droplets from DigitalOcean
 
 ---

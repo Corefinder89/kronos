@@ -17,6 +17,18 @@ log() {
   echo "===> $*"
 }
 
+# Check if a Docker context exists and remove it if it does
+remove_docker_context_if_exists() {
+  local context_name="$1"
+  if docker context ls --format "{{.Name}}" | grep -q "^${context_name}$"; then
+    log "Removing existing Docker context '${context_name}'..."
+    docker context rm -f "${context_name}"
+    echo "Docker context '${context_name}' has been removed."
+  else
+    echo "Docker context '${context_name}' does not exist."
+  fi
+}
+
 [[ -z "${DO_API_ACCESS_TOKEN:-}" ]] && { echo "ERROR: DO_API_ACCESS_TOKEN is not set."; exit 1; }
 
 # ---------------------------------------------------------------------------
@@ -32,11 +44,11 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 2. Remove the local Docker context
+# 2. Remove local Docker contexts
 # ---------------------------------------------------------------------------
 
-log "Removing Docker context '${CONTEXT_NAME}'..."
-docker context rm "${CONTEXT_NAME}" 2>/dev/null || echo "Context '${CONTEXT_NAME}' did not exist."
+remove_docker_context_if_exists "${CONTEXT_NAME}"
+remove_docker_context_if_exists "docker-swarm"
 
 # ---------------------------------------------------------------------------
 # 3. Delete all node-* droplets from DigitalOcean

@@ -67,6 +67,18 @@ get_droplet_ip() {
     | awk -v n="$name" '$1 == n { print $2 }'
 }
 
+# Check if a Docker context exists and remove it if it does
+remove_docker_context_if_exists() {
+  local context_name="$1"
+  if docker context ls --format "{{.Name}}" | grep -q "^${context_name}$"; then
+    log "Removing existing Docker context '${context_name}'..."
+    docker context rm -f "${context_name}"
+    echo "Docker context '${context_name}' has been removed."
+  else
+    echo "Docker context '${context_name}' does not exist."
+  fi
+}
+
 # ---------------------------------------------------------------------------
 # Parse arguments
 # ---------------------------------------------------------------------------
@@ -96,6 +108,12 @@ CLOUD_INIT_FILE="${SCRIPT_DIR}/docker-cloud-init.yml"
   echo "ERROR: cloud-init file not found at ${CLOUD_INIT_FILE}"
   exit 1
 }
+
+# ---------------------------------------------------------------------------
+# Check and remove docker-swarm context if it exists
+# ---------------------------------------------------------------------------
+
+remove_docker_context_if_exists "docker-swarm"
 
 # ---------------------------------------------------------------------------
 # 1. Provision droplets
