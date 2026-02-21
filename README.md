@@ -25,9 +25,14 @@ The **manager node** runs the Selenium Hub. **Worker nodes** run Chrome and Fire
 ```
 kronos/
 ├── docker-compose.yml          # Selenium Grid stack definition
+├── Makefile                    # Automation commands and workflows
+├── config.yml                  # Configuration template
+├── LICENSE                     # MIT License
 ├── CODEOWNERS                  # Code ownership definitions
 ├── .github/
-│   └── CODEOWNERS             # GitHub code ownership (preferred location)
+│   ├── CODEOWNERS             # GitHub code ownership (preferred location)
+│   └── workflows/
+│       └── lint-shell.yml     # Shell script linting workflow
 └── scripts/
     ├── dropletsetup.sh         # Provision droplets + deploy the Grid
     ├── destroy.sh              # Tear down all droplets + clean up
@@ -88,6 +93,38 @@ doctl compute ssh-key list
 
 ## Setup
 
+### Option 1: Using Configuration File (Recommended)
+
+```bash
+# Set required environment variable
+export DO_API_ACCESS_TOKEN=<your_token>
+
+# Create and customize configuration
+make config                    # Creates config.local.yml
+# Edit config.local.yml with your SSH key and preferences
+
+# Deploy using configuration
+make deploy-from-config       # Uses settings from config.local.yml
+```
+
+### Option 2: Using Makefile with Parameters
+
+```bash
+# Set required environment variable
+export DO_API_ACCESS_TOKEN=<your_token>
+
+# Check dependencies and setup
+make setup
+
+# Deploy with default settings (3 nodes, node-1 as manager)
+make quick-deploy SSH_KEY=<ssh_key_fingerprint>
+
+# Or deploy with custom settings
+make deploy NODES=3 MANAGER=node-1 SSH_KEY=<ssh_key_fingerprint>
+```
+
+### Option 3: Direct Script Usage
+
 ```bash
 export DO_API_ACCESS_TOKEN=<your_token>
 
@@ -95,6 +132,17 @@ bash scripts/dropletsetup.sh \
   -n 3 \                        # number of droplets to create
   -s node-1 \                   # which node becomes the Swarm manager
   -k <ssh_key_fingerprint>      # fingerprint from doctl compute ssh-key list
+```
+
+### Common Makefile Commands
+
+```bash
+make help                      # Show all available commands
+make status                    # View droplet and service status
+make health-fix               # Run health check with auto-repair
+make test HUB_IP=<manager-ip> # Run comprehensive Grid tests
+make scale-chrome REPLICAS=4  # Scale Chrome nodes
+make destroy                  # Clean teardown (with confirmation)
 ```
 
 What this does, in order:

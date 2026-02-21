@@ -77,6 +77,7 @@ docker-compose.override.yml
 docker-compose.local.yml
 
 # Local configuration files
+config.yml
 config.local.*
 settings.local.*
 *.local
