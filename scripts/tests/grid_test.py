@@ -22,6 +22,7 @@ Usage:
 import argparse
 import sys
 import threading
+import requests
 from datetime import datetime
 
 from selenium import webdriver
@@ -39,6 +40,59 @@ TEST_URL   = "https://www.google.com"
 SEARCH_TERM = "Selenium Grid"
 GRID_PORT  = 4444
 
+
+def get_node_info(hub_ip: str, capabilities: dict) -> dict:
+    """Extract detailed node information by correlating capabilities with Grid status."""
+    try:
+        # Get Grid node information
+        response = requests.get(f"http://{hub_ip}:{GRID_PORT}/status", timeout=5)
+        grid_status = response.json()
+        nodes = grid_status.get('value', {}).get('nodes', [])
+        
+        # Extract node IP from CDP endpoint
+        cdp_endpoint = capabilities.get('se:cdp', '')
+        node_ip = None
+        if cdp_endpoint:
+            # Extract IP from CDP WebSocket URL (e.g., ws://10.0.1.22:4444/...)
+            try:
+                node_ip = cdp_endpoint.split('//')[1].split(':')[0]
+            except (IndexError, AttributeError):
+                pass
+        
+        # Find matching node by IP
+        node_id = "Unknown"
+        node_uri = "Unknown"
+        for node in nodes:
+            try:
+                uri = node.get('uri', '')
+                if node_ip and node_ip in uri:
+                    node_id = node.get('id', 'Unknown')[:8] + '...'  # Short ID
+                    node_uri = uri
+                    break
+            except (AttributeError, TypeError):
+                continue
+        
+        return {
+            'node_id': node_id,
+            'node_uri': node_uri,
+            'node_ip': node_ip or 'Unknown',
+            'container': capabilities.get('se:containerName') or f"selenium-{capabilities.get('browserName', 'unknown')}-node",
+            'vnc_port': capabilities.get('se:noVncPort', 'Unknown'),
+            'vnc_enabled': capabilities.get('se:vncEnabled', False),
+            'browser_version': capabilities.get('browserVersion', 'Unknown')
+        }
+    
+    except Exception as e:
+        return {
+            'node_id': 'Error',
+            'node_uri': 'Error', 
+            'node_ip': 'Error',
+            'container': 'Error',
+            'vnc_port': 'Error',
+            'vnc_enabled': False,
+            'browser_version': 'Error',
+            'error': str(e)
+        }
 
 # ---------------------------------------------------------------------------
 # Test logic
@@ -80,7 +134,18 @@ def run_test(hub_ip: str, browser: str, results: dict) -> None:
 
         session_id = driver.session_id
         print(f"[{browser}] Session ID : {session_id}")
-        print(f"[{browser}] Node info  : {driver.capabilities.get('se:nodeId', 'N/A')}")
+        
+        # Extract comprehensive node information
+        node_info = get_node_info(hub_ip, driver.capabilities)
+        print(f"[{browser}] Node ID    : {node_info['node_id']}")
+        print(f"[{browser}] Node IP    : {node_info['node_ip']}")
+        print(f"[{browser}] Container  : {node_info['container']}")
+        print(f"[{browser}] Browser    : {node_info['browser_version']}")
+        if node_info['vnc_enabled']:
+            print(f"[{browser}] VNC Port   : {node_info['vnc_port']} (VNC enabled)")
+        
+        if 'error' in node_info:
+            print(f"[{browser}] Node Error : {node_info['error']}")
 
         # --- Navigate ---
         print(f"[{browser}] Navigating to {TEST_URL}")
