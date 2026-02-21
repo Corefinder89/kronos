@@ -1,0 +1,37 @@
+name: Shell Script Linting
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - '**/*.sh'
+
+jobs:
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run ShellCheck
+      uses: ludeeus/action-shellcheck@master
+      with:
+        scandir: './scripts'
+        severity: error
+        exclude_paths: |
+          ./scripts/tests/
+        format: gcc
+        
+    - name: Check for script execution permissions
+      run: |
+        echo "Checking shell scripts have executable permissions..."
+        find ./scripts -name "*.sh" -type f | while read -r script; do
+          if [[ ! -x "$script" ]]; then
+            echo "ERROR: $script is not executable"
+            exit 1
+          else
+            echo "✓ $script is executable"
+          fi
+        done

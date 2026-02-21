@@ -1,0 +1,46 @@
+# CODEOWNERS file for Kronos - Distributed Selenium Grid
+#
+# This file defines code ownership for different parts of the repository.
+# Code owners are automatically requested for review when pull requests
+# are opened that modify files they own.
+#
+# Syntax:
+#   pattern @username @team-name
+#   /path/to/file @username
+#   *.js @frontend-team
+#
+# More info: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global fallback - all files
+* @corefinder89
+
+# Core infrastructure files
+docker-compose.yml @corefinder89
+CREDENTIALS @corefinder89
+
+# Scripts and automation
+scripts/ @corefinder89
+scripts/dropletsetup.sh @corefinder89
+scripts/destroy.sh @corefinder89
+scripts/healthcheck.sh @corefinder89
+scripts/docker-cloud-init.yml @corefinder89
+
+# Documentation
+README.md @corefinder89
+scripts/CODEGUIDANCE.md @corefinder89
+
+# Testing and validation
+scripts/tests/ @corefinder89
+scripts/tests/grid_test.py @corefinder89
+scripts/tests/requirements.txt @corefinder89
+
+# Configuration files (require extra scrutiny)
+*.yml @corefinder89
+*.yaml @corefinder89
+*.json @corefinder89
+
+# Shell scripts (require security review)
+*.sh @corefinder89
+
+# Python files
+*.py @corefinder89

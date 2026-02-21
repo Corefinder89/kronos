@@ -1,0 +1,115 @@
+# CODEOWNERS file for Kronos - Distributed Selenium Grid
+#
+# This file defines code ownership for different parts of the repository.
+# Code owners are automatically requested for review when pull requests
+# are opened that modify files they own.
+#
+# GitHub will automatically request reviews from code owners when:
+# 1. A pull request is opened that modifies owned files
+# 2. Branch protection rules require code owner reviews
+# 3. Someone explicitly requests a review from code owners
+#
+# Syntax Examples:
+#   * @global-owner                    # All files
+#   /docs/ @docs-team                  # Specific directory
+#   *.js @frontend-team @security      # File pattern with multiple owners
+#   /api/ @backend-team @api-lead      # Directory with team and individual
+#
+# More info: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# =============================================================================
+# Global Ownership
+# =============================================================================
+
+# Default owner for all files (fallback)
+* @corefinder89
+
+# =============================================================================
+# Infrastructure & Core Configuration
+# =============================================================================
+
+# Docker and container orchestration
+docker-compose.yml @corefinder89
+scripts/docker-cloud-init.yml @corefinder89
+
+# Sensitive configuration and credentials
+CREDENTIALS @corefinder89
+.env* @corefinder89
+
+# =============================================================================
+# Automation Scripts
+# =============================================================================
+
+# Core deployment and management scripts
+scripts/dropletsetup.sh @corefinder89
+scripts/destroy.sh @corefinder89
+scripts/healthcheck.sh @corefinder89
+
+# All shell scripts (security-sensitive)
+*.sh @corefinder89
+
+# =============================================================================
+# Testing & Quality Assurance
+# =============================================================================
+
+# Test suite and validation scripts
+scripts/tests/ @corefinder89
+scripts/tests/grid_test.py @corefinder89
+scripts/tests/requirements.txt @corefinder89
+
+# Python files
+*.py @corefinder89
+
+# =============================================================================
+# Documentation
+# =============================================================================
+
+# Primary documentation
+README.md @corefinder89
+scripts/CODEGUIDANCE.md @corefinder89
+
+# All markdown documentation
+*.md @corefinder89
+
+# =============================================================================
+# Configuration Files (Require Extra Review)
+# =============================================================================
+
+# YAML/JSON configuration (infrastructure-critical)
+*.yml @corefinder89
+*.yaml @corefinder89
+*.json @corefinder89
+
+# Git configuration
+.gitignore @corefinder89
+.gitattributes @corefinder89
+
+# =============================================================================
+# GitHub Configuration
+# =============================================================================
+
+# GitHub-specific configurations
+.github/ @corefinder89
+.github/workflows/ @corefinder89
+CODEOWNERS @corefinder89
+
+# =============================================================================
+# Team-Based Ownership Examples (for future use)
+# =============================================================================
+
+# Uncomment and modify these when adding team members:
+#
+# # Infrastructure team for deployment scripts
+# scripts/dropletsetup.sh @infrastructure-team @corefinder89
+# scripts/destroy.sh @infrastructure-team @corefinder89
+#
+# # QA team for testing
+# scripts/tests/ @qa-team @corefinder89
+#
+# # DevOps team for Docker and CI/CD
+# docker-compose.yml @devops-team @corefinder89
+# .github/workflows/ @devops-team @corefinder89
+#
+# # Security team for sensitive files
+# CREDENTIALS @security-team @corefinder89
+# *.sh @security-team @corefinder89

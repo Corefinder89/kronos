@@ -25,6 +25,9 @@ The **manager node** runs the Selenium Hub. **Worker nodes** run Chrome and Fire
 ```
 kronos/
 ├── docker-compose.yml          # Selenium Grid stack definition
+├── CODEOWNERS                  # Code ownership definitions
+├── .github/
+│   └── CODEOWNERS             # GitHub code ownership (preferred location)
 └── scripts/
     ├── dropletsetup.sh         # Provision droplets + deploy the Grid
     ├── destroy.sh              # Tear down all droplets + clean up
@@ -262,6 +265,55 @@ bash scripts/healthcheck.sh --fix
 1. Run `bash scripts/healthcheck.sh` to diagnose issues
 2. Run `bash scripts/healthcheck.sh --fix` if problems are detected
 3. Test with `python scripts/tests/grid_test.py --hub <manager-ip>`
+
+---
+
+## Code Ownership & Contributing
+
+This repository uses GitHub's **CODEOWNERS** feature to automatically assign code reviews and maintain code quality. Code owners are automatically requested for review when pull requests modify files they own.
+
+### How It Works
+
+| File Pattern | Owner(s) | Review Required For |
+|---|---|---|
+| **All files** | `@corefinder89` | General changes |
+| **Shell scripts (*.sh)** | `@corefinder89` | Security-sensitive automation |
+| **Docker configs** | `@corefinder89` | Infrastructure changes |
+| **Documentation (*.md)** | `@corefinder89` | Documentation updates |
+| **Tests (scripts/tests/)** | `@corefinder89` | Quality assurance changes |
+
+### Contributing Guidelines
+
+1. **Fork the repository** and create a feature branch
+2. **Make your changes** following existing code patterns
+3. **Test thoroughly** using `scripts/healthcheck.sh` and `scripts/tests/grid_test.py`
+4. **Update documentation** if adding new features or changing behavior
+5. **Submit a pull request** - code owners will be automatically requested for review
+
+### Branch Protection
+
+For production deployments, enable these GitHub repository settings:
+- ✅ **Require pull request reviews before merging**
+- ✅ **Require review from code owners** 
+- ✅ **Require status checks to pass before merging**
+- ✅ **Require branches to be up to date before merging**
+
+### Adding Team Members
+
+To add team-based code ownership, edit [`.github/CODEOWNERS`](.github/CODEOWNERS):
+
+```bash
+# Example: Add infrastructure team
+scripts/dropletsetup.sh @infrastructure-team @corefinder89
+scripts/destroy.sh @infrastructure-team @corefinder89
+
+# Example: Add QA team  
+scripts/tests/ @qa-team @corefinder89
+
+# Example: Add security team for sensitive files
+*.sh @security-team @corefinder89
+CREDENTIALS @security-team @corefinder89
+```
 
 ---
 

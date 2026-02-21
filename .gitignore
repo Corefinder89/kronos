@@ -1,1 +1,90 @@
+# Kronos - Distributed Selenium Grid
+# .gitignore file to prevent sensitive data from being committed
+
+# =============================================================================
+# Sensitive Credentials & API Keys
+# =============================================================================
+
+# DigitalOcean API tokens and credentials
 CREDENTIALS
+.env
+.env.*
+
+# SSH private keys
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# =============================================================================
+# Local Development Files
+# =============================================================================
+
+# Python virtual environments
+venv/
+env/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# MacOS system files
+.DS_Store
+.AppleDouble
+
+# Windows system files
+Thumbs.db
+Desktop.ini
+
+# =============================================================================
+# Temporary Files & Logs
+# =============================================================================
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# =============================================================================
+# Test Results & Selenium Outputs
+# =============================================================================
+
+# Selenium screenshots and videos
+screenshots/
+videos/
+test-output/
+test-results/
+
+# =============================================================================
+# Local Configuration Overrides
+# =============================================================================
+
+# Docker override files (local development)
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Local configuration files
+config.local.*
+settings.local.*
+*.local
+
+# =============================================================================
+# Backup Files
+# =============================================================================
+
+*.bak
+*.backup
+*.old
