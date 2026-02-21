@@ -74,7 +74,7 @@ test: install-test-deps ## Run Selenium Grid tests (uses config.local.yml or HUB
 	fi; \
 	if [ -z "$$GRID_IP" ]; then \
 		echo "❌ HUB_IP not found. Either:"; \
-		echo "   1. Set HUB_IP parameter: make test HUB_IP=162.243.167.45"; \
+		echo "   1. Set HUB_IP parameter: make test HUB_IP=198.211.109.144"; \
 		echo "   2. Configure hub_ip in config.local.yml (run 'make config' first)"; \
 		exit 1; \
 	fi; \
@@ -212,7 +212,7 @@ examples: ## Show usage examples
 	@echo "   make fix-manager              # Fix drained manager + restart services"
 	@echo "   make test                     # Uses hub_ip from config.local.yml"
 	@echo "   # or"
-	@echo "   make test HUB_IP=162.243.167.45  # Override with specific IP"
+	@echo "   make test HUB_IP=198.211.109.144  # Override with specific IP"
 	@echo ""
 	@echo "4. Scale Services:"
 	@echo "   make scale-chrome REPLICAS=4"
@@ -232,7 +232,7 @@ env-example: ## Show environment variables example
 	@echo "NODES=3                    # Number of droplets to create"
 	@echo "MANAGER=node-1            # Manager node name" 
 	@echo "SSH_KEY=ab:cd:ef:...      # SSH key fingerprint"
-	@echo "HUB_IP=162.243.167.45     # Grid hub IP for testing (auto-detected)"
+	@echo "HUB_IP=198.211.109.144     # Grid hub IP for testing (auto-detected)"
 	@echo "REPLICAS=4                # Number of service replicas"
 	@echo "SERVICE=selenium_chrome    # Service name for logs"
 	@echo ""
