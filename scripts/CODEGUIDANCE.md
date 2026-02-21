@@ -568,6 +568,280 @@ log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
 ---
 
+# Manager Fix Script (`fix-manager.sh`)
+
+## Overview
+
+The `fix-manager.sh` script provides targeted repair for Docker Swarm manager node drainage issues. When the manager node becomes "drained" (unable to schedule workloads), this script automatically undrains it and restarts all Selenium Grid services to restore full functionality.
+
+### Required Dependencies
+- `docker`: Docker CLI with `kronos-swarm` context configured
+- `doctl`: DigitalOcean CLI for droplet management
+- `jq`: JSON processor (optional, for enhanced Grid status parsing)
+
+## Usage
+
+```bash
+# Standard manager fix and service restart
+export DO_API_ACCESS_TOKEN=<your_token>
+bash scripts/fix-manager.sh
+
+# Via Makefile (recommended)
+make fix-manager
+```
+
+### Environment Variables
+- `DO_API_ACCESS_TOKEN`: DigitalOcean personal access token (required)
+
+### Example
+```bash
+export DO_API_ACCESS_TOKEN=dop_v1_abc123...
+bash scripts/fix-manager.sh
+```
+
+## Step-by-Step Process
+
+### Step 1: Script Configuration
+```bash
+DOCKER_CONTEXT="kronos-swarm"
+STACK_NAME="selenium"
+COMPOSE_FILE="docker-compose.yml"
+```
+**What it does:** Sets configuration constants for consistent operation with existing Kronos infrastructure
+
+### Step 2: Dependency Validation
+```bash
+check_dependencies() {
+    command -v docker >/dev/null 2>&1 || { log_error "docker is required but not installed"; exit 1; }
+    command -v doctl >/dev/null 2>&1 || { log_error "doctl is required but not installed"; exit 1; }
+    
+    if [[ -z "${DO_API_ACCESS_TOKEN:-}" ]]; then
+        log_error "DO_API_ACCESS_TOKEN environment variable not set"
+        exit 1
+    fi
+}
+```
+**Purpose:**
+- Validates Docker CLI is available for Swarm management
+- Ensures DigitalOcean CLI is installed for IP resolution
+- Checks for required API token environment variable
+- Exits with clear error messages if dependencies are missing
+
+### Step 3: Docker Context Validation
+```bash
+check_docker_context() {
+    if ! docker context inspect "$DOCKER_CONTEXT" >/dev/null 2>&1; then
+        log_error "Docker context '$DOCKER_CONTEXT' does not exist"
+        log_info "Run 'bash scripts/healthcheck.sh --fix' to recreate the context"
+        exit 1
+    fi
+}
+```
+**Purpose:**
+- Verifies the `kronos-swarm` Docker context exists and is accessible
+- Provides helpful suggestion to run healthcheck if context is missing
+- Essential for remote Docker Swarm operations
+
+### Step 4: Manager Node Information Extraction
+```bash
+get_manager_node_info() {
+    local swarm_info
+    swarm_info=$(docker --context "$DOCKER_CONTEXT" node ls --format "{{.ID}} {{.Hostname}} {{.Status}} {{.Availability}} {{.ManagerStatus}}")
+    
+    while IFS= read -r line; do
+        if [[ $line =~ Leader ]]; then
+            manager_id=$(echo "$line" | awk '{print $1}')
+            manager_hostname=$(echo "$line" | awk '{print $2}')
+            manager_availability=$(echo "$line" | awk '{print $4}')
+            break
+        fi
+    done <<< "$swarm_info"
+}
+```
+**Purpose:**
+- Connects to remote Docker Swarm and lists all nodes
+- Identifies the leader manager node (primary Swarm manager)
+- Extracts manager ID, hostname, and availability status
+- Returns structured information for downstream processing
+
+### Step 5: Manager Drainage Detection
+```bash
+check_manager_status() {
+    local manager_info
+    manager_info=$(get_manager_node_info)
+    
+    local manager_availability=$(echo "$manager_info" | cut -d'|' -f3)
+    
+    if [[ "$manager_availability" == "Drain" ]]; then
+        log_warning "Manager node is drained (cannot schedule workloads)"
+        return 1
+    else
+        log_success "Manager node is active"
+        return 0
+    fi
+}
+```
+**Purpose:**
+- Checks if manager node availability is set to "Drain"
+- Drained nodes cannot schedule new containers or services
+- Returns appropriate exit code for conditional logic
+- Provides clear status messages for user feedback
+
+### Step 6: Manager Node Repair
+```bash
+fix_manager_node() {
+    local manager_info
+    manager_info=$(get_manager_node_info)
+    local manager_id=$(echo "$manager_info" | cut -d'|' -f1)
+    
+    log_info "Undraining manager node (ID: $manager_id)..."
+    docker --context "$DOCKER_CONTEXT" node update --availability active "$manager_id"
+}
+```
+**Purpose:**
+- Updates manager node availability from "Drain" to "Active"
+- Enables the manager to schedule workloads again
+- Critical for hub service deployment (hub runs on manager)
+- Uses node ID for precise targeting
+
+### Step 7: Selenium Services Restart
+```bash
+restart_selenium_services() {
+    # Check if stack exists and deploy/redeploy
+    if ! docker --context "$DOCKER_CONTEXT" stack ls | grep -q "$STACK_NAME"; then
+        log_warning "Selenium stack not found, deploying fresh..."
+        docker --context "$DOCKER_CONTEXT" stack deploy --compose-file "$COMPOSE_FILE" "$STACK_NAME"
+    else
+        log_info "Redeploying existing Selenium stack..."
+        docker --context "$DOCKER_CONTEXT" stack deploy --compose-file "$COMPOSE_FILE" "$STACK_NAME"
+    fi
+    
+    # Force restart all services
+    local services=("${STACK_NAME}_hub" "${STACK_NAME}_chrome" "${STACK_NAME}_firefox")
+    for service in "${services[@]}"; do
+        docker --context "$DOCKER_CONTEXT" service update --force "$service"
+    done
+}
+```
+**Purpose:**
+- Redeploys entire Selenium Grid stack from docker-compose.yml
+- Handles both fresh deployment and existing stack updates
+- Force-updates individual services to ensure restart
+- Includes stabilization delays for service initialization
+
+### Step 8: Service Health Verification
+```bash
+verify_services() {
+    local services
+    services=$(docker --context "$DOCKER_CONTEXT" service ls --format "{{.Name}} {{.Replicas}}")
+    
+    local expected_services=("${STACK_NAME}_hub" "${STACK_NAME}_chrome" "${STACK_NAME}_firefox")
+    
+    for expected_service in "${expected_services[@]}"; do
+        local replicas
+        replicas=$(echo "$services" | grep "^$expected_service" | awk '{print $2}')
+        if [[ $replicas =~ ^[1-9]/[1-9] ]]; then
+            log_success "✓ $expected_service: $replicas"
+        else
+            log_warning "⚠ $expected_service: $replicas (not running)"
+        fi
+    done
+}
+```
+**Purpose:**
+- Validates all required Selenium services are running
+- Checks replica counts (e.g., `1/1` = healthy, `0/1` = failed)
+- Provides visual status indicators (✓ for success, ⚠ for warnings)
+- Returns aggregate health status for overall verification
+
+### Step 9: Grid Connectivity Testing
+```bash
+test_grid_connectivity() {
+    # Get manager IP for Grid access
+    local manager_ip
+    manager_ip=$(doctl compute droplet list --format Name,PublicIPv4 --no-header | grep "^node-1 " | awk '{print $2}')
+    
+    local grid_url="http://${manager_ip}:4444/wd/hub/status"
+    local response
+    
+    if response=$(curl -s --connect-timeout 5 --max-time 10 "$grid_url"); then
+        # Parse Grid status with jq if available
+        if command -v jq >/dev/null 2>&1; then
+            local ready=$(echo "$response" | jq -r '.value.ready // false')
+            local node_count=$(echo "$response" | jq -r '.value.nodes | length')
+            
+            if [[ "$ready" == "true" ]]; then
+                log_success "Grid status: ready with $node_count nodes"
+            else
+                log_warning "Grid status: not ready (nodes connecting: $node_count)"
+            fi
+        fi
+    fi
+}
+```
+**Purpose:**
+- Tests end-to-end HTTP connectivity to Selenium Grid hub
+- Resolves manager IP dynamically using DigitalOcean API
+- Fetches Grid status from `/wd/hub/status` endpoint
+- Parses JSON response to show ready status and node count
+- Validates complete functionality chain from Docker → Grid → HTTP
+
+## Error Handling and Logging
+
+### Colored Output System
+```bash
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+
+log_info() { echo -e "${BLUE}[INFO]${NC} $*"; }
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $*"; }
+log_warning() { echo -e "${YELLOW}[WARNING]${NC} $*"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
+```
+**Purpose:**
+- Provides color-coded status messages for clear visual feedback
+- Distinguishes between informational, success, warning, and error states
+- Improves troubleshooting experience with immediate visual status
+
+### Comprehensive Workflow
+The script follows a complete workflow:
+1. **Validation** → Dependencies and Docker context
+2. **Detection** → Manager drainage status
+3. **Repair** → Undrain manager if needed
+4. **Restart** → Redeploy all Selenium services
+5. **Verification** → Validate services and Grid connectivity
+6. **Reporting** → Summary with next steps
+
+## When to Use fix-manager.sh
+
+### Primary Use Cases
+- **Manager Drainage**: When `docker node ls` shows manager as "Drain"
+- **Service Scheduling Failures**: When hub service cannot start due to manager constraints
+- **Post-Maintenance**: After DigitalOcean droplet maintenance that affects manager
+- **Grid Connectivity Issues**: When healthcheck passes but Grid is not accessible
+
+### Integration with Other Scripts
+- **Healthcheck Integration**: Run `make health-fix` for comprehensive issues
+- **Targeted Repair**: Use `make fix-manager` for specific manager problems
+- **Testing Workflow**: Follow with `make test` to validate Grid functionality
+
+### Comparison with healthcheck.sh
+- **healthcheck.sh**: Comprehensive 5-step validation and repair (droplets → context → swarm → services → connectivity)
+- **fix-manager.sh**: Targeted manager drainage repair with service restart focus
+- **Use healthcheck.sh** for unknown issues or full infrastructure validation
+- **Use fix-manager.sh** for known manager drainage or service restart needs
+
+## Security Considerations
+
+- **SSH Context**: Relies on existing `kronos-swarm` Docker context (created by healthcheck.sh)
+- **API Token**: Validates DO_API_ACCESS_TOKEN but doesn't log token value
+- **Force Operations**: Performs service restarts that may interrupt running tests
+- **Network Access**: Connects to Grid on public IP (same security model as healthcheck.sh)
+
+---
+
 # Destroy Script (`destroy.sh`)
 
 ## Overview
