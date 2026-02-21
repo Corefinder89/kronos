@@ -28,7 +28,11 @@ kronos/
 └── scripts/
     ├── dropletsetup.sh         # Provision droplets + deploy the Grid
     ├── destroy.sh              # Tear down all droplets + clean up
-    └── docker-cloud-init.yml   # Cloud-init: installs Docker on boot
+    ├── healthcheck.sh          # Health monitoring & auto-repair script
+    ├── docker-cloud-init.yml   # Cloud-init: installs Docker on boot
+    └── tests/
+        ├── grid_test.py        # Selenium Grid smoke tests
+        └── requirements.txt    # Python dependencies
 ```
 
 ---
@@ -191,6 +195,73 @@ Example output:
   ✓  firefox    PASSED
 ============================================================
 ```
+
+---
+
+## Health Monitoring
+
+The `healthcheck.sh` script automatically diagnoses and repairs common Selenium Grid issues. Use this whenever you encounter connection problems or service failures.
+
+### Quick Health Check
+
+```bash
+# Check Grid status (safe, no changes)
+export DO_API_ACCESS_TOKEN=<your_token>
+bash scripts/healthcheck.sh
+```
+
+### Auto-Repair Mode
+
+```bash
+# Automatically fix detected issues
+bash scripts/healthcheck.sh --fix
+```
+
+### What It Checks
+
+| Component | Verification |
+|---|---|
+| **DigitalOcean Droplets** | All nodes are active and accessible |
+| **Docker Context** | Remote Swarm connection is configured |
+| **Docker Swarm** | Manager node availability and service scheduling |
+| **Selenium Services** | Hub, Chrome, and Firefox containers are running |
+| **Grid Connectivity** | HTTP access to hub and node registration |
+
+### What It Fixes
+
+- ✅ **Missing Docker Context** — Recreates remote connection to Swarm manager
+- ✅ **Drained Manager Node** — Enables workload scheduling on manager
+- ✅ **Stopped Services** — Redeploys and restarts Selenium Grid stack
+- ✅ **Stuck Containers** — Force-updates unresponsive services
+
+### Example Output
+
+```
+============================================================
+  Kronos Selenium Grid Health Check
+  Mode: Check & Repair
+  Time: 2026-02-21 13:23:50
+============================================================
+
+[SUCCESS] All 3 nodes are active
+[SUCCESS] Docker context 'kronos-swarm' exists  
+[SUCCESS] Manager node is active
+[SUCCESS] selenium_hub: 1/1
+[SUCCESS] selenium_chrome: 1/1
+[SUCCESS] selenium_firefox: 1/1
+[SUCCESS] Grid is accessible at http://162.243.167.45:4444
+[SUCCESS] Grid status: ready with 2 nodes
+
+============================================================
+  Health Check Summary
+============================================================
+[SUCCESS] All checks passed! Selenium Grid is healthy.
+```
+
+**Troubleshooting Workflow:**
+1. Run `bash scripts/healthcheck.sh` to diagnose issues
+2. Run `bash scripts/healthcheck.sh --fix` if problems are detected
+3. Test with `python scripts/tests/grid_test.py --hub <manager-ip>`
 
 ---
 
