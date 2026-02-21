@@ -317,4 +317,19 @@ CREDENTIALS @security-team @corefinder89
 
 ---
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### Why MIT License?
+
+The MIT License was chosen for Kronos because:
+- ✅ **Permissive** - Allows both personal and commercial use
+- ✅ **Simple** - Clear and easy to understand terms  
+- ✅ **Compatible** - Works well with other open source projects
+- ✅ **Business Friendly** - No restrictions on commercial deployment
+- ✅ **Community Driven** - Encourages contributions and forks
+
+---
+
 > **Note**: `DO_API_ACCESS_TOKEN` and SSH key details should never be committed to version control. Add any credentials file to `.gitignore`.
